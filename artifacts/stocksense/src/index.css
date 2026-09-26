@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --font-sans: var(--app-font-sans);
+  --font-mono: var(--app-font-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  --background: 42 28% 95%;
+  --foreground: 216 27% 17%;
+  --border: 38 18% 84%;
+  --input: 38 18% 79%;
+  --ring: 174 65% 34%;
+  --card: 42 35% 98%;
+  --card-foreground: 216 27% 17%;
+  --card-border: 38 18% 86%;
+  --primary: 174 65% 29%;
+  --primary-foreground: 43 35% 97%;
+  --secondary: 38 23% 90%;
+  --secondary-foreground: 216 27% 22%;
+  --muted: 40 24% 91%;
+  --muted-foreground: 215 12% 44%;
+  --accent: 29 83% 55%;
+  --accent-foreground: 219 32% 16%;
+  --destructive: 3 66% 48%;
+  --destructive-foreground: 43 35% 97%;
+  --sidebar: 216 28% 18%;
+  --sidebar-foreground: 41 31% 91%;
+  --sidebar-accent: 174 44% 27%;
+  --sidebar-accent-foreground: 41 31% 95%;
+  --radius: 0.7rem;
+  --app-font-sans: 'Manrope', sans-serif;
+  --app-font-mono: 'DM Mono', monospace;
+}
+
+.dark {
+  --background: 216 28% 12%;
+  --foreground: 42 28% 94%;
+  --border: 216 17% 26%;
+  --input: 216 17% 31%;
+  --card: 216 25% 16%;
+  --card-foreground: 42 28% 94%;
+  --card-border: 216 17% 27%;
+  --primary: 174 57% 48%;
+  --primary-foreground: 216 28% 12%;
+  --secondary: 216 18% 24%;
+  --secondary-foreground: 42 28% 94%;
+  --muted: 216 18% 22%;
+  --muted-foreground: 215 12% 68%;
+  --accent: 29 83% 58%;
+  --accent-foreground: 216 28% 12%;
+  --destructive: 3 66% 55%;
+  --destructive-foreground: 42 28% 94%;
+  --sidebar: 216 32% 10%;
+  --sidebar-foreground: 42 28% 91%;
+  --sidebar-accent: 174 44% 22%;
+  --sidebar-accent-foreground: 42 28% 95%;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+  button, a, input, select { -webkit-tap-highlight-color: transparent; }
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse-soft { 0%,100% { opacity: .45; } 50% { opacity: .8; } }
+.animate-rise { animation: rise .45s cubic-bezier(.2,.8,.2,1) both; }
+.skeleton { animation: pulse-soft 1.5s ease-in-out infinite; background: hsl(var(--muted)); }
+.mono { font-family: var(--app-font-mono); }
+.scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9px; }
+
+/* Hide Replit badge / watermark */
+.replit-badge,
+#replit-badge,
+[data-replit-badge],
+replit-badge,
+iframe[src*="replit.com/badge"],
+a[href*="replit.com"][style*="position"],
+a[href*="replit.com/@"],
+div[class*="replit-badge"],
+div[id*="replit-badge"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

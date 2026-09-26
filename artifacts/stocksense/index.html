@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>StockSense Inventory System</title>
+    <meta name="description" content="StockSense Inventory System — Modern warehouse and stock management platform." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="StockSense Inventory System" />
+    <meta property="og:description" content="StockSense Inventory System — Modern warehouse and stock management platform." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="StockSense Inventory System" />
+    <meta name="twitter:description" content="StockSense Inventory System — Modern warehouse and stock management platform." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Ensure Replit watermark, badges, and injected overlays are permanently hidden */
+      .replit-badge,
+      #replit-badge,
+      [data-replit-badge],
+      a[href*="replit.com"][style*="position"],
+      a[href*="replit.com/@"],
+      iframe[src*="replit.com/badge"],
+      div[class*="replit-badge"],
+      div[id*="replit-badge"],
+      replit-badge {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        position: absolute !important;
+        z-index: -9999 !important;
+      }
+    </style>
+    <script>
+      (function () {
+        const removeWatermarks = () => {
+          const selectors = [
+            '.replit-badge',
+            '#replit-badge',
+            '[data-replit-badge]',
+            'replit-badge',
+            'iframe[src*="replit.com/badge"]',
+            'a[href*="replit.com"][style*="position"]',
+            'script[src*="replit-badge"]'
+          ];
+          selectors.forEach((sel) => {
+            document.querySelectorAll(sel).forEach((el) => el.remove());
+          });
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', removeWatermarks);
+        } else {
+          removeWatermarks();
+        }
+        new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+              if (node.nodeType === 1) {
+                const el = node;
+                if (
+                  el.matches?.('.replit-badge, #replit-badge, [data-replit-badge], replit-badge, iframe[src*="replit.com/badge"], a[href*="replit.com"][style*="position"]') ||
+                  el.querySelector?.('.replit-badge, #replit-badge, [data-replit-badge], replit-badge, iframe[src*="replit.com/badge"], a[href*="replit.com"][style*="position"]')
+                ) {
+                  removeWatermarks();
+                }
+              }
+            }
+          }
+        }).observe(document.documentElement, { childList: true, subtree: true });
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

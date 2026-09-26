@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "StockSense Inventory System"
+description = "A complete inventory operations workspace for managing products, warehouses, stock movements, receipts, deliveries, transfers, adjustments, and an auditable stock ledger."
+version = "1.0.0"
+id = "artifacts/stocksense"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19067
+
+[services.development]
+run = "pnpm --filter @workspace/stocksense run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/stocksense", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/stocksense/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19067"
+BASE_PATH = "/"

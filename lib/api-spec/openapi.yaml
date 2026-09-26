@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: StockSense inventory management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: dashboard
+  - name: products
+  - name: categories
+  - name: warehouses
+  - name: locations
+  - name: operations
+  - name: ledger
+  - name: reorder
+  - name: activity
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +31,1045 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/signup:
+    post:
+      operationId: signup
+      tags: [auth]
+      summary: Create a user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Current session user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Generate a development password reset OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: OTP generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpResponse"
+        "404":
+          $ref: "#/components/responses/Error"
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Reset a password with an OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Dashboard KPIs and recent activity
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WarehouseQuery"
+        - $ref: "#/components/parameters/CategoryQuery"
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/DocumentTypeQuery"
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/CategoryQuery"
+        - $ref: "#/components/parameters/ActiveQuery"
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/PageSizeQuery"
+        - $ref: "#/components/parameters/SortQuery"
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedProducts"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a product
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Error"
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product details
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update product
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deactivateProduct
+      tags: [products]
+      summary: Deactivate a product
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Product deactivated
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List categories
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create category
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+  /categories/{id}:
+    patch:
+      operationId: updateCategory
+      tags: [categories]
+      summary: Update category
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: deleteCategory
+      tags: [categories]
+      summary: Delete a category
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Category deleted
+  /warehouses:
+    get:
+      operationId: listWarehouses
+      tags: [warehouses]
+      summary: List warehouses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Warehouses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Warehouse"
+    post:
+      operationId: createWarehouse
+      tags: [warehouses]
+      summary: Create warehouse
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarehouseInput"
+      responses:
+        "201":
+          description: Warehouse created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warehouse"
+  /warehouses/{id}:
+    patch:
+      operationId: updateWarehouse
+      tags: [warehouses]
+      summary: Update warehouse
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarehouseUpdate"
+      responses:
+        "200":
+          description: Warehouse updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warehouse"
+  /locations:
+    get:
+      operationId: listLocations
+      tags: [locations]
+      summary: List stock locations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WarehouseQuery"
+      responses:
+        "200":
+          description: Locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+    post:
+      operationId: createLocation
+      tags: [locations]
+      summary: Create a location
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationInput"
+      responses:
+        "201":
+          description: Location created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+  /locations/{id}:
+    patch:
+      operationId: updateLocation
+      tags: [locations]
+      summary: Update a location
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationUpdate"
+      responses:
+        "200":
+          description: Location updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+  /operations/{kind}:
+    get:
+      operationId: listOperations
+      tags: [operations]
+      summary: List receipts, deliveries, transfers, or adjustments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OperationKindPath"
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/PageSizeQuery"
+      responses:
+        "200":
+          description: Operations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedOperations"
+    post:
+      operationId: createOperation
+      tags: [operations]
+      summary: Create an inventory operation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OperationKindPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperationInput"
+      responses:
+        "201":
+          description: Operation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operation"
+  /operations/{kind}/{id}:
+    get:
+      operationId: getOperation
+      tags: [operations]
+      summary: Get an inventory operation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OperationKindPath"
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operation"
+    patch:
+      operationId: updateOperation
+      tags: [operations]
+      summary: Edit a draft operation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OperationKindPath"
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperationUpdate"
+      responses:
+        "200":
+          description: Updated operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operation"
+  /operations/{kind}/{id}/validate:
+    post:
+      operationId: validateOperation
+      tags: [operations]
+      summary: Complete an operation and apply stock changes
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OperationKindPath"
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Validated operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operation"
+        "400":
+          $ref: "#/components/responses/Error"
+  /operations/{kind}/{id}/cancel:
+    post:
+      operationId: cancelOperation
+      tags: [operations]
+      summary: Cancel an operation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OperationKindPath"
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Canceled operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operation"
+  /stock:
+    get:
+      operationId: getStock
+      tags: [ledger]
+      summary: Current stock by product and location
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/WarehouseQuery"
+        - $ref: "#/components/parameters/CategoryQuery"
+      responses:
+        "200":
+          description: Stock balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockBalance"
+  /ledger:
+    get:
+      operationId: listLedger
+      tags: [ledger]
+      summary: Search the stock ledger
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/ProductQuery"
+        - $ref: "#/components/parameters/WarehouseQuery"
+        - $ref: "#/components/parameters/MovementQuery"
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/PageSizeQuery"
+      responses:
+        "200":
+          description: Ledger entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedLedger"
+  /reorder-rules:
+    get:
+      operationId: listReorderRules
+      tags: [reorder]
+      summary: List replenishment rules
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Reorder rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReorderRule"
+    post:
+      operationId: createReorderRule
+      tags: [reorder]
+      summary: Create replenishment rule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderRuleInput"
+      responses:
+        "201":
+          description: Reorder rule created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReorderRule"
+  /reorder-rules/{id}:
+    delete:
+      operationId: deleteReorderRule
+      tags: [reorder]
+      summary: Delete replenishment rule
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [activity]
+      summary: Recent activity
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageSizeQuery"
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Error:
+      description: Request failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    OperationKindPath:
+      name: kind
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [receipts, deliveries, transfers, adjustments]
+    SearchQuery:
+      name: search
+      in: query
+      schema: { type: string }
+    CategoryQuery:
+      name: categoryId
+      in: query
+      schema: { type: integer }
+    ProductQuery:
+      name: productId
+      in: query
+      schema: { type: integer }
+    WarehouseQuery:
+      name: warehouseId
+      in: query
+      schema: { type: integer }
+    StatusQuery:
+      name: status
+      in: query
+      schema:
+        type: string
+        enum: [DRAFT, WAITING, READY, DONE, CANCELED]
+    DocumentTypeQuery:
+      name: documentType
+      in: query
+      schema:
+        type: string
+        enum: [RECEIPT, DELIVERY, TRANSFER, ADJUSTMENT]
+    MovementQuery:
+      name: movementType
+      in: query
+      schema:
+        type: string
+        enum: [RECEIPT, DELIVERY, TRANSFER_IN, TRANSFER_OUT, ADJUSTMENT]
+    ActiveQuery:
+      name: active
+      in: query
+      schema: { type: boolean }
+    PageQuery:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSizeQuery:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    SortQuery:
+      name: sort
+      in: query
+      schema: { type: string }
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
+        status: { type: string }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    User:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        role:
+          type: string
+          enum: [USER, ADMIN]
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user: { $ref: "#/components/schemas/User" }
+    SignupInput:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    ResetPasswordInput:
+      type: object
+      required: [email, otp, password]
+      properties:
+        email: { type: string, format: email }
+        otp: { type: string, minLength: 6, maxLength: 6 }
+        password: { type: string, minLength: 8 }
+    OtpResponse:
+      type: object
+      required: [message, otp]
+      properties:
+        message: { type: string }
+        otp: { type: string }
+    Category:
+      type: object
+      required: [id, name, productCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        productCount: { type: integer }
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 2 }
+    Warehouse:
+      type: object
+      required: [id, name, code, address, active, locationCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        address: { type: string }
+        active: { type: boolean }
+        locationCount: { type: integer }
+    WarehouseInput:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        address: { type: string }
+        active: { type: boolean, default: true }
+    WarehouseUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        code: { type: string }
+        address: { type: string }
+        active: { type: boolean }
+    Location:
+      type: object
+      required: [id, name, warehouseId, warehouseName, active, currentStock]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        warehouseId: { type: integer }
+        warehouseName: { type: string }
+        active: { type: boolean }
+        currentStock: { type: number }
+    LocationInput:
+      type: object
+      required: [name, warehouseId]
+      properties:
+        name: { type: string }
+        warehouseId: { type: integer }
+        active: { type: boolean, default: true }
+    LocationUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        warehouseId: { type: integer }
+        active: { type: boolean }
+    Product:
+      type: object
+      required: [id, name, sku, categoryId, categoryName, uom, reorderLevel, active, totalStock, status]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        sku: { type: string }
+        categoryId: { type: integer }
+        categoryName: { type: string }
+        uom: { type: string }
+        reorderLevel: { type: number }
+        active: { type: boolean }
+        totalStock: { type: number }
         status:
           type: string
-      required:
-        - status
-
+          enum: [IN_STOCK, LOW_STOCK, OUT_OF_STOCK]
+    ProductInput:
+      type: object
+      required: [name, sku, categoryId, uom, reorderLevel]
+      properties:
+        name: { type: string }
+        sku: { type: string }
+        categoryId: { type: integer }
+        uom: { type: string }
+        reorderLevel: { type: number, minimum: 0 }
+        initialStock: { type: number, minimum: 0, default: 0 }
+        initialLocationId: { type: ["integer", "null"] }
+        active: { type: boolean, default: true }
+    ProductUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        sku: { type: string }
+        categoryId: { type: integer }
+        uom: { type: string }
+        reorderLevel: { type: number, minimum: 0 }
+        active: { type: boolean }
+    StockBalance:
+      type: object
+      required: [productId, productName, sku, categoryName, warehouseId, warehouseName, locationId, locationName, quantity, uom]
+      properties:
+        productId: { type: integer }
+        productName: { type: string }
+        sku: { type: string }
+        categoryName: { type: string }
+        warehouseId: { type: integer }
+        warehouseName: { type: string }
+        locationId: { type: integer }
+        locationName: { type: string }
+        quantity: { type: number }
+        uom: { type: string }
+    ProductDetail:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+        - type: object
+          required: [stockByLocation, movementHistory]
+          properties:
+            stockByLocation:
+              type: array
+              items: { $ref: "#/components/schemas/StockBalance" }
+            movementHistory:
+              type: array
+              items: { $ref: "#/components/schemas/LedgerEntry" }
+    OperationLine:
+      type: object
+      required: [id, productId, productName, sku, uom, quantity]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        sku: { type: string }
+        uom: { type: string }
+        quantity: { type: number, minimum: 0.01 }
+        physicalQuantity: { type: ["number", "null"] }
+        difference: { type: ["number", "null"] }
+    Operation:
+      type: object
+      required: [id, number, kind, status, createdAt, createdBy, lines]
+      properties:
+        id: { type: integer }
+        number: { type: string }
+        kind:
+          type: string
+          enum: [RECEIPT, DELIVERY, TRANSFER, ADJUSTMENT]
+        status:
+          type: string
+          enum: [DRAFT, WAITING, READY, DONE, CANCELED]
+        partner: { type: ["string", "null"] }
+        warehouseId: { type: ["integer", "null"] }
+        warehouseName: { type: ["string", "null"] }
+        sourceLocationId: { type: ["integer", "null"] }
+        sourceLocationName: { type: ["string", "null"] }
+        destinationWarehouseId: { type: ["integer", "null"] }
+        destinationWarehouseName: { type: ["string", "null"] }
+        destinationLocationId: { type: ["integer", "null"] }
+        destinationLocationName: { type: ["string", "null"] }
+        reason: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+        createdBy: { type: string }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/OperationLine" }
+    OperationInput:
+      type: object
+      required: [lines]
+      properties:
+        partner: { type: string }
+        warehouseId: { type: integer }
+        sourceLocationId: { type: integer }
+        destinationWarehouseId: { type: integer }
+        destinationLocationId: { type: integer }
+        reason: { type: string }
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId: { type: integer }
+              quantity: { type: number, minimum: 0.01 }
+              physicalQuantity: { type: number, minimum: 0 }
+    OperationUpdate:
+      allOf:
+        - $ref: "#/components/schemas/OperationInput"
+    PaginatedOperations:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Operation" }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    LedgerEntry:
+      type: object
+      required: [id, timestamp, productId, productName, sku, movementType, reference, quantityChange, beforeQuantity, afterQuantity, user]
+      properties:
+        id: { type: integer }
+        timestamp: { type: string, format: date-time }
+        productId: { type: integer }
+        productName: { type: string }
+        sku: { type: string }
+        movementType:
+          type: string
+          enum: [RECEIPT, DELIVERY, TRANSFER_IN, TRANSFER_OUT, ADJUSTMENT]
+        reference: { type: string }
+        warehouseName: { type: ["string", "null"] }
+        sourceLocationName: { type: ["string", "null"] }
+        destinationLocationName: { type: ["string", "null"] }
+        quantityChange: { type: number }
+        beforeQuantity: { type: number }
+        afterQuantity: { type: number }
+        user: { type: string }
+    PaginatedLedger:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerEntry" }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    ReorderRule:
+      type: object
+      required: [id, productId, productName, locationId, locationName, minimumQuantity, maximumQuantity, reorderQuantity, currentQuantity, needsReorder]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        locationId: { type: integer }
+        locationName: { type: string }
+        minimumQuantity: { type: number }
+        maximumQuantity: { type: number }
+        reorderQuantity: { type: number }
+        currentQuantity: { type: number }
+        needsReorder: { type: boolean }
+    ReorderRuleInput:
+      type: object
+      required: [productId, locationId, minimumQuantity, maximumQuantity, reorderQuantity]
+      properties:
+        productId: { type: integer }
+        locationId: { type: integer }
+        minimumQuantity: { type: number, minimum: 0 }
+        maximumQuantity: { type: number, minimum: 0 }
+        reorderQuantity: { type: number, minimum: 0.01 }
+    Activity:
+      type: object
+      required: [id, action, entity, reference, user, timestamp]
+      properties:
+        id: { type: integer }
+        action: { type: string }
+        entity: { type: string }
+        reference: { type: string }
+        user: { type: string }
+        timestamp: { type: string, format: date-time }
+    DashboardSummary:
+      type: object
+      required: [totalProducts, totalUnits, lowStockCount, outOfStockCount, pendingReceipts, pendingDeliveries, pendingTransfers, pendingAdjustments, lowStockProducts, recentActivity, pendingOperations]
+      properties:
+        totalProducts: { type: integer }
+        totalUnits: { type: number }
+        lowStockCount: { type: integer }
+        outOfStockCount: { type: integer }
+        pendingReceipts: { type: integer }
+        pendingDeliveries: { type: integer }
+        pendingTransfers: { type: integer }
+        pendingAdjustments: { type: integer }
+        lowStockProducts:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        recentActivity:
+          type: array
+          items: { $ref: "#/components/schemas/Activity" }
+        pendingOperations:
+          type: array
+          items: { $ref: "#/components/schemas/Operation" }
+    PaginatedProducts:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }

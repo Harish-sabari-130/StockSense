@@ -31,4 +31,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error({ err }, "Unhandled API error");
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Something went wrong while processing that request" });
+});
+
 export default app;
