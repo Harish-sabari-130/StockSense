@@ -27,7 +27,7 @@ initDb()
       }
     });
   })
-  .catch((err) => {
+  .catch((err: unknown) => {
     logger.error({ err }, "Failed to initialize database");
     process.exit(1);
   });

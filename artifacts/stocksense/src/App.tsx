@@ -154,11 +154,126 @@ function Operations({ kind }: { kind: Kind }) {
   return <div className="animate-rise"><PageHeader eyebrow={`Operations / ${meta.label}`} title={meta.label} detail={`Track ${meta.label.toLowerCase()} from draft through validation. Every quantity change stays attributable.`} action={<Button onClick={() => setShowCreate(true)} data-testid={`button-new-${kind}`}><Plus size={15} /> New {meta.singular.toLowerCase()}</Button>} /><Panel title={`${meta.label} queue`} eyebrow={`${data?.total ?? 0} records`} action={<div className="relative"><Search size={15} className="absolute left-3 top-2.5 text-muted-foreground" /><input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search reference or partner" className="h-9 w-56 rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary" data-testid={`input-search-${kind}`} /></div>}>{query.isLoading ? <SkeletonRows /> : query.isError ? <ErrorState retry={query.refetch} /> : data?.items.length ? <><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/60 text-[10px] uppercase tracking-[.12em] text-muted-foreground"><tr><th className="px-5 py-3">Reference</th><th className="px-5 py-3">Partner / reason</th><th className="px-5 py-3">Lines</th><th className="px-5 py-3">Created</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Open</th></tr></thead><tbody className="divide-y">{data.items.map(op => <tr key={op.id} className="hover:bg-muted/40" data-testid={`row-operation-${op.id}`}><td className="px-5 py-4"><Link href={`/operations/${kind}/${op.id}`} className="mono font-medium text-primary hover:underline" data-testid={`link-operation-${op.id}`}>{op.number}</Link></td><td className="px-5 py-4 font-semibold">{op.partner || op.reason || '—'}</td><td className="px-5 py-4 text-muted-foreground">{op.lines.length}</td><td className="px-5 py-4 text-xs text-muted-foreground">{new Date(op.createdAt).toLocaleDateString()}</td><td className="px-5 py-4"><Status value={op.status} /></td><td className="px-5 py-4 text-right"><Link href={`/operations/${kind}/${op.id}`} className="inline-flex rounded p-2 text-muted-foreground hover:bg-secondary hover:text-primary" data-testid={`button-open-operation-${op.id}`}><ChevronRight size={16} /></Link></td></tr>)}</tbody></table></div><div className="flex items-center justify-between border-t px-5 py-3 text-xs text-muted-foreground"><span>Page {data.page} · {data.total} total</span><div className="flex gap-1"><Button variant="ghost" className="h-8 px-2" disabled={page <= 1} onClick={() => setPage(page - 1)} data-testid={`button-${kind}-previous`}><ChevronLeft size={15} /></Button><Button variant="ghost" className="h-8 px-2" disabled={page * data.pageSize >= data.total} onClick={() => setPage(page + 1)} data-testid={`button-${kind}-next`}><ChevronRight size={15} /></Button></div></div></> : <div className="p-5"><Empty title={`No ${meta.label.toLowerCase()} yet`} detail={`Create a ${meta.singular.toLowerCase()} when stock movement is ready to be recorded.`} action={<Button onClick={() => setShowCreate(true)} data-testid={`button-empty-new-${kind}`}><Plus size={14} /> New {meta.singular.toLowerCase()}</Button>} /></div>}</Panel>{showCreate && <OperationModal kind={kind} onClose={() => setShowCreate(false)} />}</div>;
 }
 function OperationModal({ kind, onClose, operation }: { kind: Kind; onClose: () => void; operation?: Operation }) {
-  const { data: products } = useListProducts({ active: true, pageSize: 100 }); const { data: warehouses } = useListWarehouses(); const create = useCreateOperation(); const update = useUpdateOperation(); const qc = useQueryClient();
-  const [productId, setProductId] = useState(String(operation?.lines[0]?.productId ?? '')); const [quantity, setQuantity] = useState(String(operation?.lines[0]?.quantity ?? 1)); const [partner, setPartner] = useState(operation?.partner ?? ''); const [warehouseId, setWarehouseId] = useState(String(operation?.warehouseId ?? '')); const [reason, setReason] = useState(operation?.reason ?? '');
-  const submit = (e: React.FormEvent) => { e.preventDefault(); const data: OperationInput = { lines: [{ productId: Number(productId), quantity: Number(quantity) }], ...(partner ? { partner } : {}), ...(reason ? { reason } : {}), ...(warehouseId ? { warehouseId: Number(warehouseId) } : {}) }; const done = () => { qc.invalidateQueries({ queryKey: getListOperationsQueryKey(kind) }); qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); if (operation) qc.invalidateQueries({ queryKey: getGetOperationQueryKey(kind, operation.id) }); onClose(); }; operation ? update.mutate({ kind, id: operation.id, data }, { onSuccess: done }) : create.mutate({ kind, data }, { onSuccess: done }); };
+  const { data: products } = useListProducts({ active: true, pageSize: 100 });
+  const { data: warehouses } = useListWarehouses();
+  const { data: allLocations } = useListLocations();
+  const create = useCreateOperation();
+  const update = useUpdateOperation();
+  const qc = useQueryClient();
+
+  const [productId, setProductId] = useState(String(operation?.lines[0]?.productId ?? ''));
+  const [quantity, setQuantity] = useState(String(operation?.lines[0]?.quantity ?? 1));
+  const [partner, setPartner] = useState(operation?.partner ?? '');
+  const [warehouseId, setWarehouseId] = useState(String(operation?.warehouseId ?? ''));
+  const [sourceLocationId, setSourceLocationId] = useState(String(operation?.sourceLocationId ?? ''));
+  const [destinationLocationId, setDestinationLocationId] = useState(String(operation?.destinationLocationId ?? ''));
+  const [destWarehouseId, setDestWarehouseId] = useState(String(operation?.destinationWarehouseId ?? ''));
+  const [reason, setReason] = useState(operation?.reason ?? '');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Filter locations by warehouse selection
+  const warehouseLocations = allLocations?.filter(l => !warehouseId || l.warehouseId === Number(warehouseId)) ?? [];
+  const destWarehouseLocations = allLocations?.filter(l => !destWarehouseId || l.warehouseId === Number(destWarehouseId)) ?? [];
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    const data: OperationInput = {
+      lines: [{ productId: Number(productId), quantity: Number(quantity) }],
+      ...(partner ? { partner } : {}),
+      ...(reason ? { reason } : {}),
+      ...(warehouseId ? { warehouseId: Number(warehouseId) } : {}),
+      ...(sourceLocationId ? { sourceLocationId: Number(sourceLocationId) } : {}),
+      ...(destinationLocationId ? { destinationLocationId: Number(destinationLocationId) } : {}),
+      ...(destWarehouseId ? { destinationWarehouseId: Number(destWarehouseId) } : {}),
+    };
+    const done = () => {
+      qc.invalidateQueries({ queryKey: getListOperationsQueryKey(kind) });
+      qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      if (operation) qc.invalidateQueries({ queryKey: getGetOperationQueryKey(kind, operation.id) });
+      onClose();
+    };
+    const onError = (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Could not save operation.';
+      setErrorMsg(msg);
+    };
+    operation
+      ? update.mutate({ kind, id: operation.id, data }, { onSuccess: done, onError })
+      : create.mutate({ kind, data }, { onSuccess: done, onError });
+  };
+
   const pending = create.isPending || update.isPending;
-  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/35 p-0 sm:items-center sm:p-4"><div className="w-full max-w-lg rounded-t-xl border bg-card shadow-2xl sm:rounded-xl animate-rise"><div className="flex items-center justify-between border-b p-5"><div><p className="mono text-[10px] uppercase tracking-[.16em] text-primary">Operations / {kind}</p><h2 className="mt-1 text-lg font-bold">{operation ? `Edit ${kinds[kind].singular.toLowerCase()}` : `New ${kinds[kind].singular.toLowerCase()}`}</h2></div><button onClick={onClose} className="rounded p-2 text-muted-foreground hover:bg-muted" data-testid="button-close-operation-modal"><X size={17} /></button></div><form onSubmit={submit} className="space-y-4 p-5"><Select label="Product" value={productId} onChange={e => setProductId(e.target.value)} required data-testid="select-operation-product"><option value="">Choose a product</option>{products?.items.map(p => <option value={p.id} key={p.id}>{p.name} · {p.sku}</option>)}</Select><div className="grid gap-4 sm:grid-cols-2"><Input label="Quantity" type="number" min=".01" step=".01" value={quantity} onChange={e => setQuantity(e.target.value)} required data-testid="input-operation-quantity" />{kind === 'adjustments' ? <Input label="Reason" value={reason} onChange={e => setReason(e.target.value)} data-testid="input-operation-reason" /> : <Input label="Partner" value={partner} onChange={e => setPartner(e.target.value)} data-testid="input-operation-partner" />}</div><Select label="Warehouse" value={warehouseId} onChange={e => setWarehouseId(e.target.value)} data-testid="select-operation-warehouse"><option value="">Select warehouse</option>{warehouses?.map(w => <option value={w.id} key={w.id}>{w.name} · {w.code}</option>)}</Select>{(kind === 'transfers') && <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Transfers can be completed with source and destination locations from the operation detail view.</p>}<div className="flex justify-end gap-2 pt-2"><Button type="button" variant="ghost" onClick={onClose} data-testid="button-cancel-operation">Cancel</Button><Button type="submit" disabled={pending} data-testid="button-save-operation">{pending ? 'Saving…' : operation ? 'Save changes' : 'Create draft'}</Button></div></form></div></div>;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/35 p-0 sm:items-center sm:p-4">
+      <div className="w-full max-w-lg rounded-t-xl border bg-card shadow-2xl sm:rounded-xl animate-rise">
+        <div className="flex items-center justify-between border-b p-5">
+          <div>
+            <p className="mono text-[10px] uppercase tracking-[.16em] text-primary">Operations / {kind}</p>
+            <h2 className="mt-1 text-lg font-bold">{operation ? `Edit ${kinds[kind].singular.toLowerCase()}` : `New ${kinds[kind].singular.toLowerCase()}`}</h2>
+          </div>
+          <button onClick={onClose} className="rounded p-2 text-muted-foreground hover:bg-muted" data-testid="button-close-operation-modal"><X size={17} /></button>
+        </div>
+        <form onSubmit={submit} className="space-y-4 p-5">
+          <Select label="Product" value={productId} onChange={e => setProductId(e.target.value)} required data-testid="select-operation-product">
+            <option value="">Choose a product</option>
+            {products?.items.map(p => <option value={p.id} key={p.id}>{p.name} · {p.sku}</option>)}
+          </Select>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Quantity" type="number" min=".01" step=".01" value={quantity} onChange={e => setQuantity(e.target.value)} required data-testid="input-operation-quantity" />
+            {kind === 'adjustments'
+              ? <Input label="Reason" value={reason} onChange={e => setReason(e.target.value)} data-testid="input-operation-reason" />
+              : <Input label="Partner" value={partner} onChange={e => setPartner(e.target.value)} data-testid="input-operation-partner" />}
+          </div>
+
+          {/* Warehouse & source location for deliveries/transfers */}
+          {(kind === 'receipts' || kind === 'deliveries' || kind === 'transfers' || kind === 'adjustments') && (
+            <Select label="Warehouse" value={warehouseId} onChange={e => { setWarehouseId(e.target.value); setSourceLocationId(''); setDestinationLocationId(''); }} data-testid="select-operation-warehouse">
+              <option value="">Select warehouse</option>
+              {warehouses?.map(w => <option value={w.id} key={w.id}>{w.name} · {w.code}</option>)}
+            </Select>
+          )}
+
+          {/* Source location: deliveries and transfers */}
+          {(kind === 'deliveries' || kind === 'transfers') && (
+            <Select label="Source location" value={sourceLocationId} onChange={e => setSourceLocationId(e.target.value)} required data-testid="select-operation-source-location">
+              <option value="">Select source location</option>
+              {warehouseLocations.map(l => <option value={l.id} key={l.id}>{l.name}</option>)}
+            </Select>
+          )}
+
+          {/* Destination location: receipts, adjustments, transfers */}
+          {(kind === 'receipts' || kind === 'adjustments') && (
+            <Select label="Destination location" value={destinationLocationId} onChange={e => setDestinationLocationId(e.target.value)} required data-testid="select-operation-destination-location">
+              <option value="">Select destination location</option>
+              {warehouseLocations.map(l => <option value={l.id} key={l.id}>{l.name}</option>)}
+            </Select>
+          )}
+
+          {/* Transfers: separate destination warehouse & location */}
+          {kind === 'transfers' && (
+            <>
+              <Select label="Destination warehouse" value={destWarehouseId} onChange={e => { setDestWarehouseId(e.target.value); setDestinationLocationId(''); }} data-testid="select-operation-dest-warehouse">
+                <option value="">Select destination warehouse</option>
+                {warehouses?.map(w => <option value={w.id} key={w.id}>{w.name} · {w.code}</option>)}
+              </Select>
+              <Select label="Destination location" value={destinationLocationId} onChange={e => setDestinationLocationId(e.target.value)} required data-testid="select-operation-destination-location">
+                <option value="">Select destination location</option>
+                {destWarehouseLocations.map(l => <option value={l.id} key={l.id}>{l.name}</option>)}
+              </Select>
+            </>
+          )}
+
+          {errorMsg && <p className="rounded-md bg-red-50 p-3 text-sm text-red-800" data-testid="status-operation-error">{errorMsg}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={onClose} data-testid="button-cancel-operation">Cancel</Button>
+            <Button type="submit" disabled={pending} data-testid="button-save-operation">{pending ? 'Saving…' : operation ? 'Save changes' : 'Create draft'}</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function OperationDetailPage() {
